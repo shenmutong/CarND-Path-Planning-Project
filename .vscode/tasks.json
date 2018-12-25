@@ -1,0 +1,102 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        //{
+        //    "label": "c++",
+        //    "type": "shell",
+        //    "command": "clang++",
+            // "isShellCommand": true,
+            // "args": ["main.cpp", "-std=c++11", "-g"],
+            // "showOutput": "always"          
+        // },       
+        {
+            
+            "label": "cmake",
+           // "dependsOn" : "cd",
+           "options": {
+            "cwd": "${workspaceFolder}/build"
+            },
+            //"command": "cmake",
+            "command": "cmake",
+            "args": [
+                "..",                               
+                
+            ],           
+            
+        },
+        {
+
+            "label": "Build",
+            "dependsOn" : "cmake",
+            "command": "make",
+            "args": [
+                "-C",
+                "${workspaceFolder}/build/"
+                                
+            ],            
+            "presentation": {
+                "reveal": "always",
+                "echo": false,
+                "focus": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": "absolute",
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        }
+        // },{
+
+        //     "label": "Build",
+        //     "command": "make",
+        //     "args": [
+        //         "",                
+        //     ],            
+        //     "presentation": {
+        //         "reveal": "always",
+        //         "echo": false,
+        //         "focus": true
+        //     },
+        //     "problemMatcher": {
+        //         "owner": "cpp",
+        //         "fileLocation": "absolute",
+        //         "pattern": {
+        //             "regexp": "^(.*):(\\d+):(\\d+):\\s+(error):\\s+(.*)$",
+        //             "file": 1,
+        //             "line": 2,
+        //             "column": 3,
+        //             "severity": 4,
+        //             "message": 5
+        //         }
+        //     }
+        // },
+        // {
+        //     "label": "Run",
+        //     "type": "shell",
+        //     "dependsOn": "Build",
+        //     "command": "${fileDirname}/${fileBasenameNoExtension}.o",
+        //     "windows": {
+        //         "command": "${fileDirname}/${fileBasenameNoExtension}.exe"
+        //     },
+        //     "args": [],
+        //     "presentation": {
+        //         "reveal": "always",
+        //         "focus": true
+        //     },
+        //     "problemMatcher": [],
+        //     "group": {
+        //         "kind": "test",
+        //         "isDefault": true
+        //     }
+        // }
+    ]
+}

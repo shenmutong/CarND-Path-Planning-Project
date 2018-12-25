@@ -1,11 +1,259 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
+### Goals
+In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+## My Solution
+
+### Introduction
+This implementation is summarized in the following five steps:
+1. predictie cars from sensor fusion data
+2. Determine the trajectory
+3. Produce new path
+### Result
+![](2018-12-25-19-51-49.png)
+![](2018-12-25-20-43-31.png)
+#### PROJECT SPECIFICATION 
+- [x] The code compiles correctly.
+- [x] The car is able to drive at least 4.32 miles without incident
+- [x] The car drives according to the speed limit.
+- [x] Max Acceleration and Jerk are not Exceeded.
+- [x] Car does not have collisions.
+- [x] The car doesn't spend more than a 3 second length out side the lane lanes during changing lanes, and every other time the car stays inside one of the 3 lanes on the right hand side of the road.
+- [x] The car is able to smoothly change lanes when it makes sense to do so, such as when behind a slower moving car and an adjacent lane is clear of other traffic.
+- [x] There is a reflection on how to generate paths.
+### Implementation
+1. Generate predictions 
+the detail is in the prediction.h and prediction.cpp
+This class has three functions.the set_secure_distance and set_lane_width(int value) is used to set _secure_distance and _lane_width value. the _secure_distance means the safe distance where there is no car. when a car and my car 's distance below the _secure_distance, it means that the car's lane is safe.the lane_width is used to convert the s to int lane label which is set in the main.cpp called lane;
+```c++
+  void set_secure_distance(int value);
+
+  void set_lane_width(int value);
+
+  LaneStatus get_Lane_Status(
+    float sensor_d,
+    double sensor_s,
+    double sensor_vx,
+    double sensor_vy,
+    int cur_lane, //current car's s 
+    int prev_size, // old data size
+    double cur_s); //current car's d
+```
+In prediction.cpp , the predict implements the main function and return the LaneStatus as a result. For struct LaneStatus, there are three members,and as the called ,they mean that is the each dirction safe.The safe is meaned that there is no car in the lane.
+In this funciton ,I will check if the car data from the sensor is on my road, which determines whether it is safe ahead. If it is not on my road, then depending on whether the car is on my left or right side, it is safe to determine whether the side is safe.
+```c++
+
+LaneStatus Prediction::get_Lane_Status(
+    float sensor_d,
+    double sensor_s,
+    double sensor_vx,
+    double sensor_vy,
+    int cur_lane,
+    int prev_size,
+    double cur_s){
+
+ LaneStatus rst;
+    rst.is_font_safe = true;
+    rst.is_left_safe = true;
+    rst.is_right_safe = true;
+    float car_d = sensor_d;
+    float d = sensor_d;
+    double car_s = sensor_s;
+    int car_lane = (int)((int)car_d % _lane_width);
+    if ( d > 0 && d < 4 ) { 
+        car_lane = 0;
+    } else if ( d > 4 && d < 8 ) {
+        car_lane = 1;
+    } else if ( d > 8 && d < 12 ) {
+        car_lane = 2;
+    } 
+    
+    if(car_lane <0){
+        return rst;
+    }
+
+    double speed = sqrt(
+        sensor_vx*sensor_vx 
+        +
+        sensor_vy* sensor_vy);
+    //get the car actual s
+    car_s += ((double)prev_size * 0.02 * speed);
+
+    //check is there close car in the lane
+    bool is_car_close = (abs(cur_s - car_s) <= this->_secure_distance);
+    #if 0
+    if(is_car_close){
+        std::cout << "IS CAR CLOSE" << std::endl;
+    }
+    #endif
+    if(cur_lane == car_lane ){  
+         
+        std::cout << "cur_lane == car_lane " << std::endl;
+        //std::cout << "cur_s " << cur_s << std::endl;         
+        if(is_car_close && car_s > cur_s){
+            rst.is_font_safe = false;
+            std::cout << "FONT UNSAFE" << std::endl;
+            std::cout << "car_s " << car_s << std::endl;
+            std::cout << "cur_s " << cur_s << std::endl;
+            std::cout << " cur_lane" << cur_lane << std::endl;
+        std::cout << "car_lane" << car_lane << std::endl; 
+                     
+        }            
+    }else if(cur_lane -1 == car_lane ){
+        //left
+        rst.is_left_safe = !is_car_close;    
+         std::cout << " cur_lane" << cur_lane << std::endl;
+        std::cout << "car_lane" << car_lane << std::endl;     
+    }else if(cur_lane +1 == car_lane){
+        //right
+        rst.is_right_safe = !is_car_close;  
+         std::cout << " cur_lane" << cur_lane << std::endl;
+        std::cout << "car_lane" << car_lane << std::endl;                  
+    }
+    //check road sides
+    if(cur_lane <= 0){
+        rst.is_left_safe = false;
+    }
+    if(cur_lane >= 2){
+        rst.is_right_safe = false;
+    } 
+    
+    return rst;
+
+```
+And In main.cpp I Call the class  this way :
+```c++
+    Prediction predict;
+
+    predict.set_secure_distance(30);			
+    LaneStatus lane_status;	
+    lane_status.is_font_safe =  true;
+    lane_status.is_left_safe =  true;
+    lane_status.is_right_safe = true;
+
+    for (int i = 0; i < sensor_fusion.size(); i++) {
+        LaneStatus lane_status_tmp = predict.get_Lane_Status(
+            sensor_fusion[i][6],
+            sensor_fusion[i][5],
+            sensor_fusion[i][4],
+            sensor_fusion[i][3],
+            lane,
+            prev_size,
+            car_s);
+        lane_status.is_font_safe &= lane_status_tmp.is_font_safe;
+        lane_status.is_left_safe &= lane_status_tmp.is_left_safe;
+        lane_status.is_right_safe &= lane_status_tmp.is_right_safe;
+    }		
+```
+
+2. Decide the trajectory
+In main.cpp it use the behavior class to decide the trajectory.
+```c++
+	Behavior b;
+	b.get_behavior(lane_status,lane,ref_vel);
+```
+Its impletationimplementation are below:
+```c++
+void Behavior::get_behavior(
+    LaneStatus status,
+    int &lane,
+    double & ref_vel){
+        if(!(status.is_font_safe)){ 
+            // there is a car in the Sront 
+            //ref_vel -= _acc;
+            if(status.is_right_safe){
+                if(lane < 2){
+                    lane++;                
+                }
+                
+            }else if(status.is_left_safe){
+                if(lane >0){
+                    lane--;
+                }            }
+            else
+            {
+                ref_vel -= _acc;
+            }            
+
+        }else{
+            if(ref_vel <= _speed_limit- _acc ){
+                ref_vel += _acc;
+            }         
+        }       
+}
+```
+
+First, judge whether the front is safe. If it is safe, judge whether the speed limit is reached. If the speed limit has not been reached, accelerate _acc (this is the attribute of the class and determine the current acceleration value）. If it is not safe, determine whether there is a car left or right (first judge) Right side), if not, change lanes, if there are cars on both sides, slow down.
+
+3. Produce path
+produce path is in main.cpp it used the spline to reduce the jeck, make the path smooth.and it also used older data to reduce the jeck problem.
+```c++
+	// Setting up target points in the future.
+            vector<double> next_wp0 = getXY(car_s + 30, 2 + 4*lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            vector<double> next_wp1 = getXY(car_s + 60, 2 + 4*lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            vector<double> next_wp2 = getXY(car_s + 90, 2 + 4*lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+            ptsx.push_back(next_wp0[0]);
+            ptsx.push_back(next_wp1[0]);
+            ptsx.push_back(next_wp2[0]);
+
+            ptsy.push_back(next_wp0[1]);
+            ptsy.push_back(next_wp1[1]);
+            ptsy.push_back(next_wp2[1]);
+
+            // Making coordinates to local car coordinates.
+            for ( int i = 0; i < ptsx.size(); i++ ) {
+              double shift_x = ptsx[i] - ref_x;
+              double shift_y = ptsy[i] - ref_y;
+
+              ptsx[i] = shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw);
+              ptsy[i] = shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw);
+            }
+
+            // Create the spline.
+            tk::spline s;
+            s.set_points(ptsx, ptsy);
+
+            // Output path points from previous path for continuity.
+          	// vector<double> next_x_vals;
+          	// vector<double> next_y_vals;
+            for ( int i = 0; i < prev_size; i++ ) {
+              next_x_vals.push_back(previous_path_x[i]);
+              next_y_vals.push_back(previous_path_y[i]);
+            }
+
+            // Calculate distance y position on 30 m ahead.
+            double target_x = 30.0;
+            double target_y = s(target_x);
+            double target_dist = sqrt(target_x*target_x + target_y*target_y);
+
+            double x_add_on = 0;
+
+            for( int i = 1; i < 50 - prev_size; i++ ) {              
+              double N = target_dist/(0.02*ref_vel/2.24);
+              double x_point = x_add_on + target_x/N;
+              double y_point = s(x_point);
+
+              x_add_on = x_point;
+
+              double x_ref = x_point;
+              double y_ref = y_point;
+
+              x_point = x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw);
+              y_point = x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw);
+
+              x_point += ref_x;
+              y_point += ref_y;
+
+              next_x_vals.push_back(x_point);
+              next_y_vals.push_back(y_point);
+            }        
+```
    
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).
 
-### Goals
-In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+
 
 #### The map of the highway is in data/highway_map.txt
 Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
